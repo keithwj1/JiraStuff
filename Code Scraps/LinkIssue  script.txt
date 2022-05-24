@@ -1,0 +1,21 @@
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.ComponentManager;
+import com.atlassian.jira.issue.CustomFieldManager;
+import com.atlassian.jira.issue.fields.CustomField;
+import com.atlassian.jira.issue.IssueManager;
+import com.atlassian.jira.issue.Issue;
+import com.atlassian.jira.issue.link.IssueLinkManager
+
+def issueManager = ComponentAccessor.getIssueManager()
+def issueLinkManager = ComponentAccessor.getIssueLinkManager();
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+def ncmr = customFieldManager.getCustomFieldObject("customfield_13003")
+String ncmrnumber = issue.getCustomFieldValue(ncmr)
+if (ncmrnumber != "")
+{
+  def issuemrb = issueManager.getIssueObject(ncmrnumber)
+  if (issuemrb == null){return}
+  def authContext = ComponentAccessor.getJiraAuthenticationContext();
+  def user = authContext.getLoggedInUser();
+  issueLinkManager.createIssueLink(issue.getId(), issuemrb.getId(), Long.parseLong("10003"),Long.valueOf(1), user);
+}

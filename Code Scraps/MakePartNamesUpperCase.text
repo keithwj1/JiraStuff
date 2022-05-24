@@ -1,0 +1,80 @@
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.search.SearchProvider
+import com.atlassian.jira.jql.parser.JqlQueryParser
+import com.atlassian.jira.web.bean.PagerFilter
+
+
+//import com.atlassian.jira.issue.MutableIssue
+import com.atlassian.jira.issue.util.DefaultIssueChangeHolder
+import com.atlassian.jira.issue.fields.CustomField
+//import com.atlassian.jira.issue.fields.layout.field.FieldLayoutManager
+//import com.atlassian.jira.issue.fields.layout.field.FieldLayout
+//import com.atlassian.jira.issue.fields.layout.field.FieldLayoutItem
+import com.atlassian.jira.issue.ModifiedValue
+//import com.atlassian.jira.issue.index.IssueIndexManager
+
+
+def jqlQueryParser = ComponentAccessor.getComponent(JqlQueryParser)
+def searchProvider = ComponentAccessor.getComponent(SearchProvider)
+
+//def issueManager = ComponentAccessor.issueManager
+def issueManager = ComponentAccessor.getIssueManager()
+def user = ComponentAccessor.getJiraAuthenticationContext().getUser()
+
+def projectKey = "MRB" //THE PROJECT KEY
+def queryString = "project = ${projectKey} AND issuetype = NCMR"
+
+def query = jqlQueryParser.parseQuery(queryString)
+
+def projectIssues = searchProvider.search(query, user, PagerFilter.getUnlimitedFilter()).issues.key
+
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+
+def partnumber = customFieldManager.getCustomFieldObject("customfield_10705");
+     
+def fieldLayoutManager = ComponentAccessor.getFieldLayoutManager();
+def issueChangeHolder = new DefaultIssueChangeHolder();
+
+def issueIndexManager = ComponentAccessor.getIssueIndexManager();
+projectIssues.each{ issueKey ->
+ 	def issue = issueManager.getIssueByCurrentKey(issueKey) 
+ //YOUR CODE
+	if (issue.issueTypeObject.name == 'NCMR') 
+	{
+        //log.debug issueKey
+		Collection subTasks = issue.getSubTaskObjects()
+		//Check for subtasks with pending disposition
+		if (!subTasks.empty) 
+		{
+			subTasks.each 
+			{                        
+                def name = it.getCustomFieldValue(partnumber)
+                if (name != null)
+                {
+                    String sname = name as String
+                    String snameup = sname.toUpperCase()
+                    if (snameup != sname)
+                    {
+                        partnumber.updateValue(fieldLayoutManager.getFieldLayout(it).getFieldLayoutItem(partnumber), it, new ModifiedValue(it.getCustomFieldValue(partnumber), snameup),issueChangeHolder)
+            
+                    }
+                }
+			}
+		}
+
+
+		def name = issue.getCustomFieldValue(partnumber)
+        if (name != null)
+        {
+            String sname = name as String
+            String snameup = sname.toUpperCase()
+            if (snameup != sname)
+            {
+                partnumber.updateValue(fieldLayoutManager.getFieldLayout(issue).getFieldLayoutItem(partnumber), issue, new ModifiedValue(issue.getCustomFieldValue(partnumber), snameup),issueChangeHolder)
+
+            }
+        }
+
+	}
+ 
+}

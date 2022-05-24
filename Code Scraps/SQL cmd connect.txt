@@ -1,0 +1,3 @@
+sqlcmd -S S10840CP.SKURKAENG.COM -U kjones -P SS
+
+sqlcmd -S tcp:S10840CP.SKURKAENG.COM,1433 -U kjones -P SS

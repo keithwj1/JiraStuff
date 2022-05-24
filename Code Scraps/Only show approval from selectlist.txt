@@ -1,0 +1,56 @@
+import com.onresolve.jira.groovy.user.FieldBehaviours
+import com.onresolve.jira.groovy.user.FormField
+import com.atlassian.jira.component.ComponentAccessor
+
+def selectlist = getFieldById("customfield_13016")
+//def list = new String[]
+List myopt = []
+int count = 0;
+String value = selectlist.getValue()
+
+def currentUser = ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser()
+def groupManager = ComponentAccessor.getGroupManager()
+def optionsManager = ComponentAccessor.getOptionsManager()
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+def customField = customFieldManager.getCustomFieldObject("customfield_13016")
+def config = customField.getRelevantConfig(getIssueContext())
+def options = optionsManager.getOptions(config)
+if (groupManager.isUserInGroup(currentUser?.name, 'jira-mrb-mfgeng'))
+{
+    myopt[count] = "Manufacturing"
+    count++
+}
+if (groupManager.isUserInGroup(currentUser?.name, 'jira-mrb-quality'))
+{
+    myopt[count] = "Quality"
+    count++
+}
+if (groupManager.isUserInGroup(currentUser?.name, 'jira-mrb-designeng'))
+{
+    myopt[count] = "Design"
+    count++
+}
+if (groupManager.isUserInGroup(currentUser?.name, 'jira-operations'))
+{
+    myopt[count] = "Operations"
+    count++
+} 
+if (groupManager.isUserInGroup(currentUser?.name, 'jira-mrb-materials'))
+{
+    myopt[count] = "Materials"
+    count++
+} 
+if (count ==0)
+{
+    myopt[count] = "No Permissions"
+    count++
+}
+
+def optionsMap = options.findAll {
+        it.value in myopt // list of options you want to show
+    }.collectEntries {
+        [
+                (it.optionId.toString()): it.value
+        ]
+    }
+    selectlist.setFieldOptions(optionsMap)

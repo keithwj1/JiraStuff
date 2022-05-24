@@ -1,0 +1,18 @@
+import com.atlassian.jira.component.ComponentAccessor
+def cfManager = ComponentAccessor.getCustomFieldManager()
+def cf = cfManager.getCustomFieldObject("customfield_13016")
+issue.setCustomFieldValue(cf, null)
+
+
+
+
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.event.type.EventDispatchOption
+
+def cfManager = ComponentAccessor.getCustomFieldManager()
+def cf = cfManager.getCustomFieldObject("customfield_13016")
+issue.setCustomFieldValue(cf, null)
+
+def issueManager = ComponentAccessor.getIssueManager()
+def currentUserObj = ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser()
+issueManager.updateIssue(currentUserObj, issue, EventDispatchOption.ISSUE_UPDATED, false)

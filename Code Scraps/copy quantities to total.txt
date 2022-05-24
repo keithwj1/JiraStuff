@@ -1,0 +1,101 @@
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.search.SearchProvider
+import com.atlassian.jira.jql.parser.JqlQueryParser
+import com.atlassian.jira.web.bean.PagerFilter
+
+
+//import com.atlassian.jira.issue.MutableIssue
+import com.atlassian.jira.issue.util.DefaultIssueChangeHolder
+import com.atlassian.jira.issue.fields.CustomField
+//import com.atlassian.jira.issue.fields.layout.field.FieldLayoutManager
+//import com.atlassian.jira.issue.fields.layout.field.FieldLayout
+//import com.atlassian.jira.issue.fields.layout.field.FieldLayoutItem
+import com.atlassian.jira.issue.ModifiedValue
+//import com.atlassian.jira.issue.index.IssueIndexManager
+
+
+def jqlQueryParser = ComponentAccessor.getComponent(JqlQueryParser)
+def searchProvider = ComponentAccessor.getComponent(SearchProvider)
+
+//def issueManager = ComponentAccessor.issueManager
+def issueManager = ComponentAccessor.getIssueManager()
+def user = ComponentAccessor.getJiraAuthenticationContext().getUser()
+
+def projectKey = "MRB" //THE PROJECT KEY
+def queryString = "project = ${projectKey} AND issuetype = NCMR AND created >= -150w AND created <= -100w"
+
+def query = jqlQueryParser.parseQuery(queryString)
+
+def projectIssues = searchProvider.search(query, user, PagerFilter.getUnlimitedFilter()).issues.key
+
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+
+def fqtyrecnew = customFieldManager.getCustomFieldObject("customfield_13219")//Scrap Number Field
+def fqtyrejnew = customFieldManager.getCustomFieldObject("customfield_13220")// Field
+def ftrecieved = customFieldManager.getCustomFieldObject("customfield_13232")//received
+def ftrej = customFieldManager.getCustomFieldObject("customfield_13231")// rejected
+def fscrap = customFieldManager.getCustomFieldObject("customfield_13217");//Scrap
+     
+def fieldLayoutManager = ComponentAccessor.getFieldLayoutManager();
+def issueChangeHolder = new DefaultIssueChangeHolder();
+def issueIndexManager = ComponentAccessor.getIssueIndexManager();
+
+projectIssues.each{ issueKey ->
+ 	def issue = issueManager.getIssueByCurrentKey(issueKey) 
+ //YOUR CODE
+ 	def change = false
+    double trec =0.0
+    double trej = 0.0
+	if (issue.issueTypeObject.name == 'NCMR') 
+	{
+        //log.debug issueKey
+		Collection subTasks = issue.getSubTaskObjects()
+		//Check for subtasks with pending disposition
+		if (!subTasks.empty) 
+		{
+			subTasks.each 
+			{
+                        
+                def rec = it.getCustomFieldValue(fqtyrecnew)
+                def rej = it.getCustomFieldValue(fqtyrejnew)
+                if(rec != null && rej != null)
+                {
+                    change = true
+                    if (rec != null)
+                    {
+                        def nrec = rec as double
+                        if (trec < nrec)
+                        {
+                            trec=nrec;
+                        }
+
+                        //log.debug "rec = " + nrec
+                        //fqtyrecnew.updateValue(fieldLayoutManager.getFieldLayout(it).getFieldLayoutItem(fqtyrecnew), it, new ModifiedValue(it.getCustomFieldValue(fqtyrecnew), nrec),issueChangeHolder)
+                    }
+                    if (rej != null)
+                    {
+                        def nrej = rej as double
+                        if (trej < nrej)
+                        {
+                            trej=nrej;
+                        }
+                        //log.debug "rej = " + nrej
+                        //fqtyrejnew.updateValue(fieldLayoutManager.getFieldLayout(it).getFieldLayoutItem(fqtyrejnew), it, new ModifiedValue(it.getCustomFieldValue(fqtyrejnew), nrej),issueChangeHolder)
+                    }
+                    //issueIndexManager.reIndex(it);
+
+                }
+			}
+		}
+
+
+		if (change && trec != 0.0 && trej !=0.0)
+        {
+            ftrej.updateValue(fieldLayoutManager.getFieldLayout(issue).getFieldLayoutItem(ftrej), issue, new ModifiedValue(issue.getCustomFieldValue(ftrej), trej),issueChangeHolder)
+			ftrecieved.updateValue(fieldLayoutManager.getFieldLayout(issue).getFieldLayoutItem(ftrecieved), issue, new ModifiedValue(issue.getCustomFieldValue(ftrecieved), trec),issueChangeHolder)
+            issueIndexManager.reIndex(issue);
+		}
+
+	}
+ 
+}

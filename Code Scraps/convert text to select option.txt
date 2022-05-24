@@ -1,0 +1,79 @@
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.search.SearchProvider
+import com.atlassian.jira.jql.parser.JqlQueryParser
+import com.atlassian.jira.web.bean.PagerFilter
+
+import com.atlassian.jira.issue.customfields.option.Option
+//import com.atlassian.jira.issue.MutableIssue
+import com.atlassian.jira.issue.util.DefaultIssueChangeHolder
+import com.atlassian.jira.issue.fields.CustomField
+//import com.atlassian.jira.issue.fields.layout.field.FieldLayoutManager
+//import com.atlassian.jira.issue.fields.layout.field.FieldLayout
+//import com.atlassian.jira.issue.fields.layout.field.FieldLayoutItem
+import com.atlassian.jira.issue.ModifiedValue
+//import com.atlassian.jira.issue.index.IssueIndexManager
+def jqlQueryParser = ComponentAccessor.getComponent(JqlQueryParser)
+def searchProvider = ComponentAccessor.getComponent(SearchProvider)
+
+//def issueManager = ComponentAccessor.issueManager
+def issueManager = ComponentAccessor.getIssueManager()
+def user = ComponentAccessor.getJiraAuthenticationContext().getUser()
+
+def projectKey = "CR" //THE PROJECT KEY
+def queryString = "project = ${projectKey} AND issuetype = 'Contract Review'"
+
+def query = jqlQueryParser.parseQuery(queryString)
+
+def projectIssues = searchProvider.search(query, user, PagerFilter.getUnlimitedFilter()).issues.key
+
+def customFieldManager = ComponentAccessor.getCustomFieldManager()  
+
+
+     
+def fieldLayoutManager = ComponentAccessor.getFieldLayoutManager();
+def issueChangeHolder = new DefaultIssueChangeHolder();
+def issueIndexManager = ComponentAccessor.getIssueIndexManager();
+
+def fgratingold = customFieldManager.getCustomFieldObject("customfield_12401");//government rating (dx/do)
+def fgratingnew = customFieldManager.getCustomFieldObject("customfield_13302");//government rating (dx/do)
+def optionsManager = ComponentAccessor.getOptionsManager()
+
+import org.apache.log4j.Logger
+import org.apache.log4j.Level
+  
+def log = Logger.getLogger("com.acme.CreateSubtask")
+log.setLevel(Level.DEBUG)
+
+
+projectIssues.each{ issueKey ->
+ 	def issue = issueManager.getIssueByCurrentKey(issueKey) 
+ //YOUR CODE
+ 	def change = false
+	if (issue.issueTypeObject.name == 'Contract Review') 
+	{
+
+        def grating = issue.getCustomFieldValue(fgratingold)
+        if (grating != null)
+		{
+            String sgrating = grating as String
+            def config = fgratingnew.getRelevantConfig(issue)
+			def options = optionsManager.getOptions(config)
+            if (sgrating == "DX")
+            log.debug options
+            log.debug options.get(0)
+            change = true
+            //issue.setCustomFieldValue(fgratingnew, sgrating) 
+            //def newval = fgratingnew.findByOptionValue(sgrating)
+            //fgratingnew.updateValue(fieldLayoutManager.getFieldLayout(issue).getFieldLayoutItem(fgratingnew), issue, new ModifiedValue(issue.getCustomFieldValue(fgratingnew), sgrating) ,issueChangeHolder)
+            fgratingnew.updateValue(fieldLayoutManager.getFieldLayout(issue).getFieldLayoutItem(fgratingnew), issue, new ModifiedValue(issue.getCustomFieldValue(fgratingnew), opt), issueChangeHolder)
+            //select_singlechoice_field.updateValue(null, issue, new ModifiedValue("",  (Object) getOptions(issue, select_singlechoice_field, ["option 1"]).get(0)), new DefaultIssueChangeHolder())
+            //fgratingnew.updateValue(fieldLayoutManager.getFieldLayout(issue).getFieldLayoutItem(fgratingnew), issue, new ModifiedValue(issue.getCustomFieldValue(fgratingnew),  (Object) getOptions(issue, fgratingnew, ["option 1"]).get(0)), issueChangeHolder)
+        }
+		if (change)
+        {
+            issueIndexManager.reIndex(issue);
+		}
+
+	}
+
+}

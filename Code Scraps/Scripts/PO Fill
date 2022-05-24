@@ -1,0 +1,596 @@
+import com.atlassian.jira.component.ComponentAccessor
+import custom.global.Mapics
+import com.onresolve.scriptrunner.db.DatabaseUtil
+
+import custom.global.Part
+import custom.global.PartList
+
+import com.atlassian.jira.issue.customfields.option.Option
+import com.atlassian.jira.issue.MutableIssue
+//import org.apache.log4j.Logger
+import javax.ws.rs.core.MultivaluedMap
+
+def issueManager = ComponentAccessor.getIssueManager();
+//def issue = issueManager.getIssueObject(underlyingIssue.getId());
+def issue = underlyingIssue;
+def cfManager = ComponentAccessor.getCustomFieldManager()
+def fpo = cfManager.getCustomFieldObject("customfield_11215");
+def fmo = cfManager.getCustomFieldObject("customfield_11053");
+def fsource = cfManager.getCustomFieldObject("customfield_11051");
+def oldopo = null;
+def oldomo = null;
+def osource = null;
+def bUseMoData = false;
+
+String saction = getActionName();
+if (saction != "Create")
+{
+    oldopo = issue.getCustomFieldValue(fpo);
+    oldomo = issue.getCustomFieldValue(fmo);
+    osource = issue.getCustomFieldValue(fsource);
+}
+String ssource = "Purchase Order";
+if (osource != null)
+{
+    ssource = osource.toString();
+    if (ssource != "Mfg Order")
+    {
+        ssource = "Purchase Order";
+        bUseMoData = true
+    }
+}
+def bpo = getFieldById("customfield_11215");
+def bmo = getFieldById("customfield_11053");
+def opo = bpo.getValue();
+def omo = bmo.getValue();
+String sqlquery = ""
+String spo = ""
+String smo = ""
+
+if (opo != null)
+{
+    spo = opo.toString();
+    spo=spo.toUpperCase();
+    spo = spo.replaceAll("\\s","");
+    
+    if (spo.size() > 10)
+    {
+        //bpo.setError("Please Input Only One PO")
+    }
+    else
+    {
+        //bpo.clearError()
+    }
+}
+else
+{
+    //bpo.clearError()
+}
+
+if (omo != null)
+{
+    smo = omo.toString()
+    smo = smo.replaceAll("\\s","")
+    smo = smo.toUpperCase();
+    
+    if (smo.size() > 10)
+    {
+        //bmo.setError("Please Input Only One MO")
+    }
+    else
+    {
+        //bmo.clearError()
+    }
+}
+else
+{
+    //bmo.clearError()
+}
+
+DatabaseUtil.withSql('MAPICS') 
+{
+    sql ->
+    if (opo != null && oldopo != opo)
+    {
+        bpo.setFormValue(spo);
+        //Bad PO # filter
+        if (spo.size() < 6)
+        {
+            sqlquery = ""
+        }
+        else
+        {
+            String sSeparator = ''
+            if (spo.contains(';')) {sSeparator = ';'}
+            else if (spo.contains(',')) {sSeparator = ','}
+            else if (spo.contains('/')) {sSeparator = '/'}
+            else if (spo.contains('\\')) {sSeparator = '\\'}
+            else if (spo.contains('&')) {sSeparator = '&'}
+            else if (spo.contains(' ')) {sSeparator = ' '}
+            if (sSeparator != ' ')
+            {
+                spo = spo.replaceAll(" ","")
+            }
+			def fbackground = getFieldById("customfield_14501");
+			fbackground.setFormValue("Yes");
+            if (sSeparator == '')
+            {
+            	sqlquery = "SELECT [ITNBR],[ITDSC],[PACKC],[ENGNO],[BUYNO],[VNDNR] FROM [ODBCMAPICS].[POWER9].[AMFLIBF].[POITEM] WHERE ORDNO = '"+ spo + "';"
+            }
+            else
+            {
+                def apo = spo.split(sSeparator)
+                if (apo.size() > 1)
+                {
+                    String sList = "("
+                    for (sCur in apo)
+                    {
+                        sList+="'"+sCur+"'"+ ","
+                    }
+                    sList = sList.substring(0, sList.length() - 1);
+                    sList+=")"
+                    sqlquery = "SELECT [ITNBR],[ITDSC],[PACKC],[ENGNO],[BUYNO],[VNDNR] FROM [ODBCMAPICS].[POWER9].[AMFLIBF].[POITEM] WHERE ORDNO IN "+ sList + ";"
+                } 
+            }
+        }
+    }
+    if (sqlquery == "" && omo != null && oldomo != omo)
+    {
+        bmo.setFormValue(smo);
+        if (smo.size() < 6)
+        {
+            sqlquery = ""
+        }
+        else
+        {
+            String sSeparator = ''
+            if (smo.contains(';')) {sSeparator = ';'}
+            else if (smo.contains(',')) {sSeparator = ','}
+            else if (smo.contains('/')) {sSeparator = '/'}
+            else if (smo.contains('\\')) {sSeparator = '\\'}
+            else if (smo.contains('&')) {sSeparator = '&'}
+            else if (smo.contains(' ')) {sSeparator = ' '}
+            if (sSeparator != ' ')
+            {
+                smo = smo.replaceAll(" ","")
+            }
+			def fbackground = getFieldById("customfield_14501");
+			fbackground.setFormValue("Yes");
+            if (sSeparator == '')
+            {
+            	sqlquery = "SELECT [FITEM],[ENGNO],[FDESC],[ITRV] FROM [ODBCMAPICS].[POWER9].[AMFLIBF].[MOMAST] WHERE ORDNO = '"+ smo + "';"
+            }
+            else
+            {
+                def amo = smo.split(sSeparator)
+                if (amo.size() > 1)
+                {
+                    String sList = "("
+                    for (sCur in amo)
+                    {
+                        sList+="'"+sCur+"'"+ ","
+                    }
+                    sList = sList.substring(0, sList.length() - 1);
+                    sList+=")"
+                    sqlquery = "SELECT [FITEM],[ENGNO],[FDESC],[ITRV] FROM [ODBCMAPICS].[POWER9].[AMFLIBF].[MOMAST] WHERE ORDNO IN "+ sList + ";"
+                } 
+            }
+        }
+    }
+    if (sqlquery != "")
+    { 
+        def oPartList = new PartList()
+        def bPartInformation = getFieldById("customfield_15800");
+        def oPartInformation = bPartInformation.getValue()
+        if (oPartInformation != null)
+        {
+            String sPartInformation = oPartInformation.toString();
+            oPartList.AddPartsFromString(sPartInformation)
+        }
+        String sreturn = "";
+        String buyerno;
+        String vendorno;     
+        sql.eachRow(sqlquery) 
+        {
+            if (it != null)
+            {
+                def fill = true;
+                if (ssource == "Mfg Order" && opo != "") //Purchase order filled out but we have done work to it.
+                {
+                    fill = false;
+                }
+                def bPartSelectList = getFieldById('customfield_15700');
+                def oPartSelectList = bPartSelectList.getValue()
+                if (oPartSelectList != null)
+                {
+                    String sPartSelectList = oPartSelectList.toString()
+                    if (sPartSelectList == "None")
+                    {
+                        fill = false;
+                    }
+                }
+                else
+                {
+                    //fill = false;
+                }
+                Part curPart = new Part()
+                String sit = it.toString();
+                sit = sit.replaceAll("\\[","")
+                sit = sit.replaceAll("\\]","")
+                def scol = sit.split(", ")
+                for (int i = 0; i < scol.size(); i++)
+                {
+                    //extra , somewhere in the table, join and delete second split
+                    if (!scol[i].contains(":"))
+                    {
+                        scol[i] = scol[i-1]+", "+scol[i]
+                    }
+                    def sdata = scol[i].split(":")
+                    if (sdata.length > 1)
+                    {
+                        def cur = sdata[0]
+                        def sdata1 = sdata[1].trim()
+                        if (cur == "ITNBR")
+                        {       
+                            curPart.sNumber = sdata1
+                            if (sdata1.startsWith("*") || sdata1.startsWith("OSP ")) {fill = false;}
+                            sreturn = sreturn + "Part Number: ${sdata1} \r\n"
+                        }
+                        else if (cur == "ENGNO")
+                        {
+                            curPart.SetEngNumber(sdata1)
+                            sreturn = sreturn + "Full Engineering Part Number: ${sdata1} \r\n";
+                            def fcust = getFieldById("customfield_14001");
+                            fcust.setFormValue(sdata1);
+                        }
+                        else if (cur == "BUYNO")
+                        {
+                            buyerno = sdata1
+                            def bBuyerID = getFieldById("customfield_15501");
+                            bBuyerID.setFormValue(buyerno)
+                            curPart.SetBuyerNumber(sdata1)
+                        }
+                        else if (cur == "HOUSE")
+                        {
+                            sreturn = sreturn + "Warehouse: ${sdata1} \r\n"
+                        }
+                        else if (cur == "WHSLC")
+                        {
+                            sreturn = sreturn + "Location: ${sdata1} \r\n"
+                        }
+                        else if (cur == "PACKC")
+                        {
+                            curPart.SetRevision(sdata1)
+                            sreturn = sreturn + "Revision: ${sdata1} \r\n"
+                        }
+                        else if (cur == "QTYOR")
+                        {
+                            sreturn = sreturn + "Quantity Ordered: ${sdata1} \r\n"
+                        }
+                        else if (cur == "DKQTY")
+                        {
+                            sreturn = sreturn + "Quantity Recieved: ${sdata1} \r\n"
+                        }
+                        else if (cur == "ITDSC")
+                        {
+                            if (sdata1.size() > curPart.GetPartDescription().size())
+                            {
+                                curPart.SetPartDescription(sdata1)
+                            }
+                        }
+                        else if (cur == "VNDNR")
+                        {
+                            vendorno=sdata1
+                            curPart.SetSupplierNumber(sdata1)
+                            def bVendorID = getFieldById("customfield_15100");
+                            bVendorID.setFormValue(vendorno)
+                        }
+                        else if (cur == "ACTPL")
+                        {
+                            sreturn = sreturn + "ACTPL PO Cost: ${sdata1} \r\n"
+                        }
+                        else if (cur == "EXTPR")
+                        {
+                            sreturn = sreturn + "EXTPR PO Cost: ${sdata1} \r\n"
+                        }
+                        else if (cur == "EXTPL")
+                        {
+                            sreturn = sreturn + "EXTPL PO Cost: ${sdata1} \r\n"
+                        }
+                        //MOMASTER FIELDS
+                        else if (cur == "FITEM")
+                        {
+                            if (sdata1.contains("*") || sdata1.contains("OSP ") || sdata1.contains("OUTSIDE SERVIC")) {fill = false;}
+                            sreturn = sreturn + "Part Number: ${sdata1} \r\n"
+                            curPart.SetPartNumber(sdata1)
+                        }
+                        else if (cur == "FDESC")
+                        {
+                            if (sdata1.size() > curPart.GetPartDescription().size())
+                            {
+                                curPart.SetPartDescription(sdata1)
+                            }
+                        }
+                        else if (cur == "FSKLC")
+                        {
+                            sreturn = sreturn + "Location: ${sdata1} \r\n"
+                        }
+                        else if (cur == "ITRV")
+                        {
+                            sreturn = sreturn + "Revision: ${sdata1} \r\n"
+                            curPart.SetRevision(sdata1)
+                        }
+                        else if (cur == "FITWH")
+                        {
+                            sreturn = sreturn + "Warehouse: ${sdata1} \r\n"
+                        }
+                        else if (cur == "OPCUR")
+                        {
+                            sreturn = sreturn + "Current Operation: ${sdata1} \r\n"
+                        }
+                        else if (cur == "WCCUR")
+                        {
+                            sreturn = sreturn + "Current Operation Work Facility: ${sdata1} \r\n"
+                        }
+                        else if (cur == "ORQTY")
+                        {
+                            sreturn = sreturn + "Order Quantity: ${sdata1} \r\n"
+                        }
+                        else if (cur == "QTDEV")
+                        {
+                            sreturn = sreturn + "Order Deviation: ${sdata1} \r\n"
+                        }
+                        else if (cur == "QCCUR")
+                        {
+                            sreturn = sreturn + "Quantity Complete Current: ${sdata1} \r\n"
+                        }
+                        else if (cur == "QTYRC")
+                        {
+                            sreturn = sreturn + "Quantity Recieved: ${sdata1} \r\n"
+                        }
+                        else if (cur == "QTSCP")
+                        {
+                            sreturn = sreturn + "Quantity Scrapped: ${sdata1} \r\n"
+                        }
+                        else if (cur == "QTSPL")
+                        {
+                            sreturn = sreturn + "Quantity Split: ${sdata1} \r\n"
+                        }
+                    }
+                }
+                if (fill)
+                {
+                    String sRevision = curPart.GetRevision()
+                    String sEngNo = curPart.GetEngNumber()
+                    String sDescription = curPart.GetPartDescription()
+                    
+                    if (sRevision == null || sRevision == "")
+                    {
+                        if (sEngNo.contains("-"))
+                        {
+                            def aEngNumber = sEngNo.split("-")
+                            int nLength = aEngNumber.size()
+                            String sTemp = aEngNumber[nLength - 1]
+                            if (sTemp.length() < 4)
+                            {
+                                sRevision = sTemp
+                                curPart.SetRevision(sTemp)
+                            }
+                        }
+                        if (sEngNo.contains("_"))
+                        {
+                            def aEngNumber = sEngNo.split("_")
+                            int nLength = aEngNumber.size()
+                            String sTemp = aEngNumber[nLength - 1]
+                            if (sTemp.length() < 4)
+                            {
+                                sRevision = sTemp
+                                curPart.SetRevision(sTemp)
+                            }
+                        }
+                    }
+                    
+                    if (sEngNo != "")
+                    {
+                        def bEngNo = getFieldById("customfield_14001");
+                        bEngNo.setFormValue(sEngNo);
+                    }
+                    if (sRevision != "")
+                    {
+                        def bRevision = getFieldById("customfield_11003");
+                        bRevision.setFormValue(sRevision);
+                    }
+                    if (sDescription != "")
+                    {
+                        def bDescription = getFieldById("customfield_11062");
+                        bDescription.setFormValue(sDescription);
+                    }
+                }
+                if (curPart.sDescription != "")
+                {
+                    sreturn = sreturn + "Part Description: ${curPart.sDescription} \r\n"
+                }     
+                oPartList.AddPartObject(curPart)
+            }
+            
+        }
+        
+        if (spo.length() >= 5 || smo.length() >= 5 )
+        {
+            def fPartSelectList = customFieldManager.getCustomFieldObject("customfield_15700")
+			def PartSelectConfig = fPartSelectList.getRelevantConfig(getIssueContext())
+            def optionsManager = ComponentAccessor.getOptionsManager()
+            def options = optionsManager.getOptions(PartSelectConfig)
+            List<String> values = []
+            String sPartList = ""
+            List<Part> aPart = oPartList.GetPartList()
+            //values.add(null)
+            for (Part in aPart)
+            {
+                if (Part != null)
+                {
+                    String sCurNumber = Part.GetPartNumber()
+                    if (!sCurNumber.startsWith("*") || sCurNumber.contains("OSP") || 1==1)
+                    {
+                        def option = options.find {it.value == sCurNumber}
+                        if (option == null)
+                        {
+                            def SeqMax = options*.sequence.max()
+                            def newSeqId = 0
+                            if (SeqMax != null)
+                            {
+                                newSeqId = SeqMax - 1 
+                            }
+                            Option newoption = optionsManager.createOption(PartSelectConfig, null, newSeqId, sCurNumber)
+                        }
+                        values.add(sCurNumber)
+                    }
+                    sPartList = sPartList + Part.GenerateString()
+                }
+            }
+            if (!values.isEmpty())
+            {
+                PartSelectConfig = fPartSelectList.getRelevantConfig(getIssueContext())
+                options = optionsManager.getOptions(PartSelectConfig)
+                def bPartSelectList = getFieldById("customfield_15700");
+                values.add("None")
+                bPartSelectList.setFieldOptions(options.findAll {it.value in values})
+            }
+            bPartInformation.setFormValue(sPartList)
+            if (1==2)
+            {
+                java.util.Map map = values.inject(['':'None']){ map, item ->
+                    map[item]= item
+                    map
+                }
+                def bPartNum = getFieldById("customfield_10705");
+                bPartNum.convertToSingleSelect().setFieldOptions(map)
+            }
+        }
+        if (buyerno != null)
+        {
+            sql.eachRow("SELECT [BUYNM],[BUYPH],[EADR] FROM [ODBCMAPICS].[POWER9].[AMFLIBF].[BUYERF] WHERE BUYNO = $buyerno;") 
+            {
+                if (it != null)
+                {
+                    String sit = it.toString();
+                    sit = sit.replaceAll("\\[","")
+                    sit = sit.replaceAll("\\]","")
+                    def scol = sit.split(", ")
+                    for (int i = 0; i < scol.size(); i++)
+                    {
+                        //extra , somewhere in the table, join and delete second split
+                        if (!scol[i].contains(":"))
+                        {
+                            scol[i] = scol[i-1]+", "+scol[i]
+                        }
+                        def sdata = scol[i].split(":")
+                        if (sdata.length > 1)
+                        {
+                            def cur = sdata[0]
+							def sdata1 = sdata[1].trim()
+                            if (cur == "BUYNM")
+                            {
+                                sreturn = sreturn + "Buyer Name: ${sdata1} \r\n"
+                            }
+                            else if (cur == "BUYPH")
+                            {
+                                sreturn = sreturn + "Buyer Phone: ${sdata1} \r\n"
+                            }
+                            else if (cur == "EADR")
+                            {
+                                sreturn = sreturn + "Buyer Email: ${sdata1} \r\n"
+                                def bBuyerEmail = getFieldById("customfield_15503");
+                                bBuyerEmail.setFormValue(sdata1)
+                                def sBuyerEmails = sdata1.split('@')
+                                def bBuyer = getFieldById("customfield_15502");
+                                bBuyer.setFormValue([sBuyerEmails[0]])
+                                //bBuyer.setFormValue("egarcia")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (vendorno != null)
+        {
+            sql.eachRow("SELECT [VNAME],[VADD1],[VADD2],[VCITY],[VSTAC],[VZIPC],[VETEL],[FAXTN],[EADR] FROM [ODBCMAPICS].[POWER9].[AMFLIBF].[VENNAM] WHERE VNDNR = $vendorno;") 
+            {
+                //sqllog.debug(it)
+                if (it != null)
+                {
+                    //String address = "Address: "
+                    String address = ""
+                    String sit = it.toString();
+                    sit = sit.replaceAll("\\[","")
+                    sit = sit.replaceAll("\\]","")
+                    def scol = sit.split(", ")
+                    for (int i = 0; i < scol.size(); i++)
+                    {
+                        //extra , somewhere in the table, join and delete second split
+                        if (!scol[i].contains(":"))
+                        {
+                            scol[i] = scol[i-1]+", "+scol[i]
+                        }
+                        def sdata = scol[i].split(":")
+                        if (sdata.length > 1)
+                        {
+                            def cur = sdata[0]
+							def sdata1 = sdata[1].trim()
+                            if (cur == "VNAME")
+                            {
+                                sreturn = sreturn + "Vendor Name: ${sdata1} \r\n";
+                                def fcust = getFieldById("customfield_11202");
+                                fcust.setFormValue(sdata1);
+                            }
+                            else if (cur == "VADD1")
+                            {
+                                address = address + sdata1 + "\r\n"
+                            }
+                            else if (cur == "VADD2")
+                            {
+                                address = address + sdata1 + "\r\n"
+                            }
+                            else if (cur == "VCITY")
+                            {
+                                address = address + sdata1 + ", "
+                            }
+                            else if (cur == "VSTAC")
+                            {
+                                address = address + sdata1 + " "
+                            }
+                            else if (cur == "VZIPC")
+                            {
+                                address = address + sdata1 + " "
+                            }
+                            else if (cur == "VETEL")
+                            {
+                                sreturn = sreturn + "Vendor Phone: ${sdata1} \r\n"
+                            }
+                            else if (cur == "FAXTN")
+                            {
+                                sreturn = sreturn + "Vendor Fax: ${sdata1} \r\n"
+                            }
+                            else if (cur == "EADR")
+                            {
+                                sreturn = sreturn + "Supplier Email: ${sdata1} \r\n"
+                                def bSupplierEmail = getFieldById("customfield_16100");
+                                bSupplierEmail.setFormValue(sdata1)
+                            }
+                        }
+                    }
+                    sreturn = sreturn + "Address: " + address + "\r\n";
+                    def fcust = getFieldById("customfield_11818");
+                    fcust.setFormValue(address);
+                }
+            }
+        } 
+        if (sreturn != "")
+        {
+            def fcust = getFieldById("customfield_14000");
+            //will run in background to stop stack overflows
+            //fcust.setFormValue(sreturn);
+        }
+    }
+
+}

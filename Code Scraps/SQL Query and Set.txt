@@ -1,0 +1,69 @@
+1)
+
+import java.sql.*;
+import groovy.sql.Sql
+  
+class Example {
+   static void main(String[] args) {
+      // Creating a connection to the database
+      def sql = Sql.newInstance('jdbc:jtds:sqlserver://localhost:1433/atlstatus', 'sa',
+         'xxxxxxxx', 'net.sourceforge.jtds.jdbc.Driver') 
+             
+      sql.eachRow('select * from Status') {
+         tp ->
+         println([tp.ID,tp.APPLICATION,tp.INCIDENTDATE])
+      } 
+         
+      sql.close()
+   }
+}
+
+
+2)
+
+import groovy.sql.Sql
+import java.sql.Driver
+
+def driver = Class.forName('com.microsoft.sqlserver.jdbc.SQLServerDriver').newInstance() as Driver
+
+def props = new Properties()
+props.setProperty("user", "jira")
+props.setProperty("password", "xxxxxxxxxxxxxx")
+
+def conn = driver.connect("jdbc:sqlserver://srv-erp.office.xxxxxxxxxxx.com:1433;DatabaseName=xxxxxxxxxxxxxxxxxxxxx", props)
+def sql = new Sql(conn)
+
+try {
+sql.eachRow("SELECT * from table") {
+log.debug(it)
+}
+println "Hello world!"
+
+} finally {
+sql.close()
+conn.close()
+}
+
+
+
+3) Pull example
+package examples
+
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.MutableIssue
+import org.apache.log4j.Logger
+
+def log = Logger.getLogger("com.onresolve.jira.groovy.MyScript")
+
+def MutableIssue issue = issue
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+
+def customerCf = customFieldManager.getCustomFieldObjectByName("Customer")
+def customer = issue.getCustomFieldValue(customerCf)
+
+// do database query...
+
+// set some value retrieved from the db
+
+def verifiedCf = customFieldManager.getCustomFieldObjectByName("Is Verified")
+issue.setCustomFieldValue(verifiedCf, "Verified")

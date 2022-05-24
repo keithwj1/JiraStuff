@@ -1,0 +1,227 @@
+import com.onresolve.jira.groovy.user.FieldBehaviours
+import com.onresolve.jira.groovy.user.FormField
+import com.atlassian.jira.component.ComponentAccessor
+
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+def optionsManager = ComponentAccessor.getOptionsManager()
+
+// Get a pointer to my select list field
+def selectList = getFieldByName("Approve Disposition")
+
+// Get a pointer to my check box field
+def groupManager = ComponentAccessor.getGroupManager()
+def currentUser = ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser()
+int bMfg = groupManager.getUsersInGroup("jira-mrb-mfgeng").contains(currentUser)
+int bMaterials = groupManager.getUsersInGroup("jira-mrb-materials").contains(currentUser)
+int bQuality = groupManager.getUsersInGroup("jira-mrb-quality").contains(currentUser)
+int bOps = groupManager.getUsersInGroup("jira-operations").contains(currentUser)
+int bDesign = groupManager.getUsersInGroup("jira-mrb-designeng").contains(currentUser)
+
+// Get access to the required custom field and options managers
+def customField = customFieldManager.getCustomFieldObject(selectList.getFieldId())
+def config = customField.getRelevantConfig(getIssueContext())
+def options = optionsManager.getOptions(config)
+
+
+//Remove current options
+//removeCustomFieldOptions(selectList)
+
+list<option> alist = new ArrayList<string>();
+if (!bMfg) {
+Option Manufacturing
+
+}
+
+
+// Logic to do some actions depending on what check box value is selected
+if (bMfg == true) {
+    // define and set the required options when checkbox A is selected
+    def optionsMap = options.findAll {
+        it.value in ["Manufacturing Engineering", "B"] // list of options you want to show
+    }.collectEntries {
+        [
+                (it.optionId.toString()): it.value
+        ]
+    }
+    selectList.setFieldOptions(optionsMap)
+} else if (checkBoxVal == "B") {
+    // define and set the required options when checkbox A is selected
+    def optionsMap = options.findAll {
+        it.value in ["C", "D", "E"] // list of options you want to show
+    }.collectEntries {
+        [
+                (it.optionId.toString()): it.value
+        ]
+    }
+   selectList.setFieldOptions(optionsMap)
+}
+
+
+
+
+
+
+
+
+
+import com.onresolve.jira.groovy.user.FieldBehaviours
+import com.onresolve.jira.groovy.user.FormField
+import com.atlassian.jira.component.ComponentAccessor
+//import com.atlassian.jira.issue.customfields.manager
+
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+def optionsManager = ComponentAccessor.getOptionsManager()
+
+// Get a pointer to my select list field
+def selectList = getFieldByName("Approve Disposition")
+
+// Get a pointer to my check box field
+def groupManager = ComponentAccessor.getGroupManager()
+def currentUser = ComponentAccessor.getJiraAuthenticationContext().getUser()
+int bMfg = groupManager.getUsersInGroup("jira-mrb-mfgeng").contains(currentUser)
+int bMaterials = groupManager.getUsersInGroup("jira-mrb-materials").contains(currentUser)
+int bQuality = groupManager.getUsersInGroup("jira-mrb-quality").contains(currentUser)
+int bOps = groupManager.getUsersInGroup("jira-operations").contains(currentUser)
+int bDesign = groupManager.getUsersInGroup("jira-mrb-designeng").contains(currentUser)
+
+// Get access to the required custom field and options managers
+def ApproveList = customFieldManager.getCustomFieldObject(selectList.getFieldId())
+def config = ApproveList.getRelevantConfig(getIssueContext())
+def options = optionsManager.getOptions(config)
+
+
+//Remove current options
+//removeCustomFieldOptions(selectList)
+
+def alist = new ArrayList()
+int count = 0
+if (bMfg) {
+    alist[count] = "Manufacturing Engineering"
+    count++
+}
+if (bMaterials) {
+    alist[count] = "Materials"
+    count++
+}
+if (bQuality) {
+    alist[count] = "Quality Engineering"
+    count++
+}
+if (bOps) {
+    alist[count] = "Operations"
+    count++
+}
+if (bDesign) {
+    alist[count] = "Design Engineering"
+    count++
+}
+
+def optionsMap = options.findAll {
+        it.value in alist // list of options you want to show
+    }.collectEntries {
+        [
+                (it.optionId.toString()) : it.value
+        ]
+    }
+selectList.setFieldOptions(optionsMap)
+selectList.setRequired(true)
+
+
+
+import com.atlassian.jira.component.ComponentAccessor
+
+//def issue = ComponentAccessor.getIssueManager().getIssueObject("NCMRB-2") // get issue where field exist
+def customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObjectByName("Approve Disposition")
+def optionsManager = ComponentAccessor.getOptionsManager()
+def options = optionsManager.getOptions(customField.getRelevantConfig(getIssueContext()))
+def selectList = getFieldByName("Approve Disposition")
+// Get a pointer to my check box field
+def groupManager = ComponentAccessor.getGroupManager()
+def currentUser = ComponentAccessor.getJiraAuthenticationContext().getUser()
+int bMfg = groupManager.getUsersInGroup("jira-mrb-mfgeng").contains(currentUser)
+int bMaterials = groupManager.getUsersInGroup("jira-mrb-materials").contains(currentUser)
+int bQuality = groupManager.getUsersInGroup("jira-mrb-quality").contains(currentUser)
+int bOps = groupManager.getUsersInGroup("jira-operations").contains(currentUser)
+int bDesign = groupManager.getUsersInGroup("jira-mrb-designeng").contains(currentUser)
+
+//Remove current options
+//removeCustomFieldOptions(selectList)
+List alist = new ArrayList()
+int count = 0
+if (bMfg) {
+    alist[count] = "Manufacturing Engineering"
+    count++
+}
+if (bMaterials) {
+    alist[count] = "Materials"
+    count++
+}
+if (bQuality) {
+    alist[count] = "Quality Engineering"
+    count++
+}
+if (bOps) {
+    alist[count] = "Operations"
+    count++
+}
+if (bDesign) {
+    alist[count] = "Design Engineering"
+    count++
+}
+
+def optionsMap = options.findAll {
+        it.value in alist // list of options you want to show
+    }.collectEntries {
+        [
+                (it.optionId.toString()) : it.value
+        ]
+    }
+selectList.setFieldOptions(optionsMap)
+//selectList.setRequired(true)
+
+/*
+options.each 
+{
+    if (it.value == "Manufacturing Engineering" && bMfg)
+    {
+        optionsManager.enableOption( it)    
+    }
+    else
+    {
+        optionsManager.disableOption(it)  
+    }
+    if (it.value == "Materials" && bMaterials)
+    {
+        optionsManager.enableOption( it)    
+    }
+    else
+    {
+        optionsManager.disableOption(it)  
+    }
+    if (it.value == "Quality Engineering" && bQuality)
+    {
+        optionsManager.enableOption( it)    
+    }
+    else
+    {
+        optionsManager.disableOption(it)  
+    }
+    if (it.value == "Operations" && bOps)
+    {
+        optionsManager.enableOption( it)    
+    }
+    else
+    {
+        optionsManager.disableOption(it)  
+    }
+    if (it.value == "Design Engineering" && bDesign)
+    {
+        optionsManager.enableOption( it)    
+    }
+    else
+    {
+        optionsManager.disableOption(it)  
+    }
+
+}
+*/

@@ -1,0 +1,16 @@
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.Issue
+def fielduser = issue.getCustomFieldValue(ComponentAccessor.getCustomFieldManager().getCustomFieldObject("customfield_13105"))
+def currentUser = ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser()
+if (currentUser == fielduser)
+{
+    return true
+}
+else
+{
+    return false
+}
+
+
+
+13107 //authorized approver

@@ -1,0 +1,6 @@
+issue.subTaskObjects.any { subtask ->
+  subtask.statusObject.name == "Open"}
+  
+  
+  
+  13105

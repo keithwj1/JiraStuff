@@ -1,0 +1,75 @@
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.ComponentManager;
+import com.atlassian.jira.issue.CustomFieldManager;
+import com.atlassian.jira.issue.fields.CustomField;
+import com.atlassian.jira.issue.IssueManager;
+import com.atlassian.jira.issue.Issue;
+def issueManager = ComponentAccessor.getIssueManager()
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+def currentUser = ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser()
+def fullName = currentUser.displayName
+
+String sField = "customfield_11214"
+CustomField cf = customFieldManager.getCustomFieldObjectByName("Approved By")
+
+def approvestring = issue.getCustomFieldValue(cf)
+import java.text.SimpleDateFormat
+def date = new Date()
+sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss")
+//println sdf.format(date)
+if (approvestring != null)
+{
+	issue.setCustomFieldValue(cf,approvestring.toString()+"\n"+fullName.toString() + " "+sdf.format(date))
+}
+else
+{
+  issue.setCustomFieldValue(cf,fullName.toString() + " "+ sdf.format(date))
+}
+
+currentUser.displayName
+
+new Date().format("MM/dd/yyyy HH:mm:ss")
+
+${dateformat("MM/dd/yyyy"):Subtasks[n].Date Returned to Stock}
+
+
+
+
+import java.text.SimpleDateFormat
+import com.atlassian.jira.component.ComponentAccessor
+
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+def cf = customFieldManager.getCustomFieldObject("customfield_13016")
+def value = issue.getCustomFieldValue(cf)
+def fullName = currentUser.displayName
+def date = new Date()
+sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss")
+if (value == 'Manufacturing')
+{
+  	def cf2 = customFieldManager.getCustomFieldObjectByName("Mfg Eng Approval")
+  	issue.setCustomFieldValue(cf2,fullName.toString() + " "+ sdf.format(date))
+}
+else if (value == "Quality")
+{
+    def cf2 = customFieldManager.getCustomFieldObjectByName("Quality Approval")
+    issue.setCustomFieldValue(cf,fullName.toString() + " "+ sdf.format(date))
+}
+else if (value == 'Design')
+{
+    def cf2 = customFieldManager.getCustomFieldObjectByName("Design Eng Approval")
+    issue.setCustomFieldValue(cf,fullName.toString() + " "+ sdf.format(date))
+}
+else if (value == 'Operations')
+{
+    def cf2 = customFieldManager.getCustomFieldObjectByName("Ops Approval")
+    issue.setCustomFieldValue(cf,fullName.toString() + " "+ sdf.format(date))
+}
+else if (value == 'Materials')
+{
+  	def cf2 = customFieldManager.getCustomFieldObjectByName("Material Approval")
+	issue.setCustomFieldValue(cf,fullName.toString() + " "+ sdf.format(date))
+}
+
+
+currentUser.displayName.toString() + " "+ new Date().format("MM/dd/yyyy HH:mm:ss")
+issue.get("customfield_13016") == "Quality"

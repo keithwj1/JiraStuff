@@ -1,0 +1,281 @@
+//add scrap costs to NCMR
+
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.search.SearchProvider
+import com.atlassian.jira.jql.parser.JqlQueryParser
+import com.atlassian.jira.web.bean.PagerFilter
+
+
+import com.atlassian.jira.issue.MutableIssue
+import com.atlassian.jira.issue.util.DefaultIssueChangeHolder
+	import com.atlassian.jira.issue.fields.CustomField
+	import com.atlassian.jira.issue.fields.layout.field.FieldLayoutManager
+	import com.atlassian.jira.issue.fields.layout.field.FieldLayout
+	import com.atlassian.jira.issue.fields.layout.field.FieldLayoutItem
+	import com.atlassian.jira.issue.ModifiedValue
+	import com.atlassian.jira.issue.index.IssueIndexManager
+
+
+def jqlQueryParser = ComponentAccessor.getComponent(JqlQueryParser)
+def searchProvider = ComponentAccessor.getComponent(SearchProvider)
+
+def issueManager = ComponentAccessor.issueManager
+
+def user = ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser()
+
+def projectKey = "MRB" //THE PROJECT KEY
+def queryString = "project = ${projectKey} AND issuetype = NCMR"
+
+def query = jqlQueryParser.parseQuery(queryString)
+
+def projectIssues = searchProvider.search(query, user, PagerFilter.getUnlimitedFilter()).issues.key
+
+import org.apache.log4j.Logger
+import org.apache.log4j.Level
+  
+def log = Logger.getLogger("com.acme.CreateSubtask")
+log.setLevel(Level.DEBUG)
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+def fdispo = customFieldManager.getCustomFieldObject("customfield_10601");//dispo
+def fscrap = customFieldManager.getCustomFieldObject("customfield_11212");//Scrap
+
+projectIssues.each{ issueKey ->
+ def issue = issueManager.getIssueByCurrentKey(issueKey) 
+ //YOUR CODE
+ def change = false
+	if (issue.issueTypeObject.name == 'NCMR') 
+	{
+        //log.debug issueKey
+		
+		String val = ''
+		//String x
+		Collection subTasks = issue.getSubTaskObjects()
+		def ncmrcost = 0.0
+
+		//Check for subtasks with pending disposition
+		if (!subTasks.empty) 
+		{
+			subTasks.each 
+			{
+                def dispo = it.getCustomFieldValue(fdispo)
+                //def dispo = customFieldManager.getCustomFieldObjects(it).find {it.name == 'Disposition'}
+                //log.debug "dispo =" + dispo
+				if (dispo != null )
+                {
+                    if (dispo.toString() == "Scrap")
+                    {
+                        //def fcost = customFieldManager.getCustomFieldObjects(it).find {it.name == 'Scrap Cost'}
+                        //Update SCRAPPPP COST
+                        String scost = it.getCustomFieldValue(fscrap)
+                        if (scost != null && !scost.equalsIgnoreCase("n/a") && !scost.equalsIgnoreCase("na"))
+                        {
+                            /*if (scost.substring(0,1).equals('$'))
+                            {
+                                scost = scost.substring(1,scost.length())
+                            }*/
+                            scost = scost.replaceAll("[^0-9.]", "")
+                            if (!scost.equalsIgnoreCase("0") && !scost.equalsIgnoreCase(""))
+                            {                               
+                                ncmrcost = ncmrcost + scost.toDouble()
+                                change = true
+                                //log.debug "scost =" + scost
+                                //log.debug "ncmrcost =" + ncmrcost
+                            }
+                        }
+                    }
+                }
+			}
+		}
+
+
+		if (change && ncmrcost != 0.0)
+        {
+            //Record value on issue
+            //CustomField fscrapcost = customFieldManager.getCustomFieldObject("customfield_11212"); //"Scrap Cost" field
+            FieldLayoutManager fieldLayoutManager = ComponentAccessor.getFieldLayoutManager();
+            FieldLayoutItem fieldLayoutItem = fieldLayoutManager.getFieldLayout(issue).getFieldLayoutItem(fscrap);
+            DefaultIssueChangeHolder issueChangeHolder = new DefaultIssueChangeHolder();
+
+            issue.setCustomFieldValue(fscrap, ncmrcost);
+            //fscrapcost.updateValue(fieldLayoutItem, issue, new ModifiedValue(val,val), issueChangeHolder);
+            fscrap.updateValue(fieldLayoutItem, issue, new ModifiedValue(issue.getCustomFieldValue(fscrap), ncmrcost.toString()),issueChangeHolder)
+
+            IssueIndexManager issueIndexManager = ComponentAccessor.getIssueIndexManager();
+            issueIndexManager.reIndex(issue);
+		}
+
+	}
+ 
+}
+
+
+
+//COPY SCRAP COSTS TO NUMBER FIELD
+/*
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.search.SearchProvider
+import com.atlassian.jira.jql.parser.JqlQueryParser
+import com.atlassian.jira.web.bean.PagerFilter
+
+
+import com.atlassian.jira.issue.MutableIssue
+import com.atlassian.jira.issue.util.DefaultIssueChangeHolder
+	import com.atlassian.jira.issue.fields.CustomField
+	import com.atlassian.jira.issue.fields.layout.field.FieldLayoutManager
+	import com.atlassian.jira.issue.fields.layout.field.FieldLayout
+	import com.atlassian.jira.issue.fields.layout.field.FieldLayoutItem
+	import com.atlassian.jira.issue.ModifiedValue
+	import com.atlassian.jira.issue.index.IssueIndexManager
+
+
+def jqlQueryParser = ComponentAccessor.getComponent(JqlQueryParser)
+def searchProvider = ComponentAccessor.getComponent(SearchProvider)
+
+def issueManager = ComponentAccessor.issueManager
+
+def user = ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser()
+
+def projectKey = "MRB" //THE PROJECT KEY
+def queryString = "project = ${projectKey} AND issuetype = NCMR AND created >= -60w "
+
+def query = jqlQueryParser.parseQuery(queryString)
+
+def projectIssues = searchProvider.search(query, user, PagerFilter.getUnlimitedFilter()).issues.key
+
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+def fdispo = customFieldManager.getCustomFieldObject("customfield_10601")//dispo
+def fscrap = customFieldManager.getCustomFieldObject("customfield_11212")//Scrap String Field
+def fscrapnew = customFieldManager.getCustomFieldObject("customfield_13217")//Scrap Number Field
+
+projectIssues.each{ issueKey ->
+ def issue = issueManager.getIssueByCurrentKey(issueKey) 
+ //YOUR CODE
+		
+		String val = ''
+		Collection subTasks = issue.getSubTaskObjects()
+
+		//Check for subtasks with pending disposition
+		if (!subTasks.empty) 
+		{
+			subTasks.each 
+			{
+                def dispo = it.getCustomFieldValue(fdispo)
+				if (dispo != null )
+                {
+                    if (dispo.toString() == "Scrap")
+                    {
+                        //Update SCRAPPPP COST
+                        String scost = it.getCustomFieldValue(fscrap)
+                        if (scost != null)
+                        {
+                           	scost = scost.replaceAll("[^0-9.]", "")
+                            if (!scost.equalsIgnoreCase("0") && !scost.equalsIgnoreCase(""))
+                            {                        
+                                def dcost = scost.toDouble()
+                                //Record value on issue
+                                FieldLayoutManager fieldLayoutManager = ComponentAccessor.getFieldLayoutManager();
+                                FieldLayoutItem fieldLayoutItem = fieldLayoutManager.getFieldLayout(it).getFieldLayoutItem(fscrapnew);
+                                DefaultIssueChangeHolder issueChangeHolder = new DefaultIssueChangeHolder();
+
+                                issue.setCustomFieldValue(fscrapnew, dcost);
+                                fscrapnew.updateValue(fieldLayoutItem, it, new ModifiedValue(it.getCustomFieldValue(fscrapnew), dcost),issueChangeHolder)
+
+                                IssueIndexManager issueIndexManager = ComponentAccessor.getIssueIndexManager();
+                                issueIndexManager.reIndex(it);
+                            }
+                        }
+                    }
+                }
+			}
+		}
+}
+*/
+
+
+
+//FOR NUMBER FIELDS
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.search.SearchProvider
+import com.atlassian.jira.jql.parser.JqlQueryParser
+import com.atlassian.jira.web.bean.PagerFilter
+
+
+import com.atlassian.jira.issue.MutableIssue
+import com.atlassian.jira.issue.util.DefaultIssueChangeHolder
+import com.atlassian.jira.issue.fields.CustomField
+import com.atlassian.jira.issue.fields.layout.field.FieldLayoutManager
+import com.atlassian.jira.issue.fields.layout.field.FieldLayout
+import com.atlassian.jira.issue.fields.layout.field.FieldLayoutItem
+import com.atlassian.jira.issue.ModifiedValue
+import com.atlassian.jira.issue.index.IssueIndexManager
+
+
+def jqlQueryParser = ComponentAccessor.getComponent(JqlQueryParser)
+def searchProvider = ComponentAccessor.getComponent(SearchProvider)
+
+def issueManager = ComponentAccessor.issueManager
+
+def user = ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser()
+
+def projectKey = "MRB" //THE PROJECT KEY
+def queryString = "project = ${projectKey} AND issuetype = NCMR AND created <= -80w"
+
+def query = jqlQueryParser.parseQuery(queryString)
+
+def projectIssues = searchProvider.search(query, user, PagerFilter.getUnlimitedFilter()).issues.key
+
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+def fdispo = customFieldManager.getCustomFieldObject("customfield_10601");//dispo
+def fscrap = customFieldManager.getCustomFieldObject("customfield_13217");//Scrap
+
+projectIssues.each{ issueKey ->
+ 	def issue = issueManager.getIssueByCurrentKey(issueKey) 
+ //YOUR CODE
+ 	def change = false
+	if (issue.issueTypeObject.name == 'NCMR') 
+	{
+		Collection subTasks = issue.getSubTaskObjects()
+		double ncmrcost = 0.0;
+		//Check for subtasks with pending disposition
+		if (!subTasks.empty) 
+		{
+			subTasks.each 
+			{
+                def dispo = it.getCustomFieldValue(fdispo)
+				if (dispo != null )
+                {
+                    if (dispo.toString() == "Scrap")
+                    {
+                        //Update SCRAPPPP COST
+                        double scost =0.0;
+                        ////WHYYYYYY
+                        String sscost = it.getCustomFieldValue(fscrap).toString()
+                        if (sscost != "null")
+                        {    
+                            scost = sscost.toDouble()
+                            ncmrcost = ncmrcost + scost
+                            change = true
+                        }
+                    }
+                }
+			}
+		}
+
+
+		if (change && ncmrcost != 0.0)
+        {
+            //Record value on issue
+            FieldLayoutManager fieldLayoutManager = ComponentAccessor.getFieldLayoutManager();
+            FieldLayoutItem fieldLayoutItem = fieldLayoutManager.getFieldLayout(issue).getFieldLayoutItem(fscrap);
+            DefaultIssueChangeHolder issueChangeHolder = new DefaultIssueChangeHolder();
+
+            issue.setCustomFieldValue(fscrap, ncmrcost);
+            fscrap.updateValue(fieldLayoutItem, issue, new ModifiedValue(issue.getCustomFieldValue(fscrap), ncmrcost),issueChangeHolder)
+
+            IssueIndexManager issueIndexManager = ComponentAccessor.getIssueIndexManager();
+            issueIndexManager.reIndex(issue);
+		}
+
+	}
+ 
+}

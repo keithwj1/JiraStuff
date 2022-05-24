@@ -1,0 +1,11 @@
+import com.atlassian.jira.event.type.EventDispatchOption
+def issueManager = ComponentAccessor.getIssueManager()
+def currentUserObj = ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser()
+issueManager.updateIssue(currentUserObj, issue, EventDispatchOption.DO_NOT_DISPATCH, false)
+
+
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.event.type.EventDispatchOption
+def issueManager = ComponentAccessor.getIssueManager()
+def currentUserObj = ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser()
+issueManager.updateIssue(currentUserObj, issue, EventDispatchOption.ISSUE_UPDATED, false)

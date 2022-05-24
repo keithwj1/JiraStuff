@@ -1,0 +1,49 @@
+/*
+corrective action due date 12920
+corrective action number 11216 (MRB)
+Corrective action steps 12916
+Corrective action type 12900 (keep)
+quantity 12923
+part number 10705 (keep) 
+part description 11062 (keep)
+revision 11003
+mufacturing order number 12921
+serial number 10800
+supplier 11202
+purchase order number 12902
+work order number 12901
+customer 11061 (keep)
+root cause summary 12915(keep)
+preventative action 12917
+effectiveness required 12918
+effectiveness evaluation 12919
+approved by 12924
+containment action response 12909
+priority
+*/
+
+Survey Reason 13007
+create mrb 13102
+Defect Description		11203
+Qty Received		11014
+Sample Size		11019
+Qty Rejected		11024
+Should Be Measurement		11034
+Actual Measurement		11035
+Dwg Zone	11029	
+Root Cause		12000
+Defect Code 12001
+
+
+def cf = customFieldManager.getCustomFieldObjects(sourceIssue).find {it.name == 'Root Cause Summary'}
+def value= sourceIssue.getCustomFieldValue(cf)
+issue.setCustomFieldValue(cf, sourceIssue.getCustomFieldValue(cf))
+issue.summary = value
+
+
+
+//update summary with part number
+def fpart = getFieldById("customfield_10705")
+def summ = getFieldById("summary")
+def value = fpart.getValue()
+summ.setFormValue(value)

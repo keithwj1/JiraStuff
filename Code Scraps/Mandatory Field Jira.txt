@@ -1,0 +1,89 @@
+import com.atlassian.jira.component.ComponentAccessor
+import com.opensymphony.workflow.InvalidInputException
+
+def groupManager = ComponentAccessor.getGroupManager()
+
+def assignee = issue.getAssignee()
+
+if (assignee != null && groupManager.getUsersInGroup("jira-mrb-designeng").contains(assignee)) {
+	def customFieldManager = ComponentAccessor.getCustomFieldManager();
+	def CustomFieldValue1 = issue.getCustomFieldValue(customFieldManager.getCustomFieldObjectByName("Disposition")) as String;
+	if(CustomFieldValue1 == "Use As Is") 
+	{
+		def CustomFieldValue2 = issue.getCustomFieldValue(customFieldManager.getCustomFieldObjectByName("Design Engineering Approval Comments"));
+		if(CustomFieldValue2 == null)
+		{
+			invalidInputException = new InvalidInputException("Design Engineering Approval Comments are mandatory when Disposition is Use As Is");
+			return false
+	   }
+		
+	}
+}
+else if (assignee != null && groupManager.getUsersInGroup("jira-mrb-mfgeng").contains(assignee)) {
+{
+	def customFieldManager = ComponentAccessor.getCustomFieldManager();
+	def CustomFieldValue1 = issue.getCustomFieldValue(customFieldManager.getCustomFieldObjectByName("Disposition")) as String;
+	if(CustomFieldValue1 == "Rework") 
+	{
+		def CustomFieldValue2 = issue.getCustomFieldValue(customFieldManager.getCustomFieldObjectByName("Rework Instructions"));
+		if(CustomFieldValue2 == null)
+	   {
+			invalidInputException = new InvalidInputException("Rework Instructions are mandatory when Disposition is Rework");
+			return false
+	   }
+		
+	}
+}
+return true
+
+
+def customFieldManager = ComponentAccessor.getCustomFieldManager();
+def CustomFieldValue1 = issue.getCustomFieldValue(customFieldManager.getCustomFieldObjectByName("Disposition")) as String;
+if(CustomFieldValue1 == "Use As Is") 
+{
+	def CustomFieldValue2 = issue.getCustomFieldValue(customFieldManager.getCustomFieldObjectByName("Design Engineering Approval Comments"));
+	if(CustomFieldValue2 == null)
+	{
+   		invalidInputException = new InvalidInputException("Design Engineering Approval Comments are mandatory when Disposition is Use As Is");
+     	return false
+   }
+	
+}
+else if(CustomFieldValue1 == "Rework") 
+{
+	def CustomFieldValue2 = issue.getCustomFieldValue(customFieldManager.getCustomFieldObjectByName("Rework Instructions"));
+	if(CustomFieldValue2 == null)
+   {
+   		invalidInputException = new InvalidInputException("Rework Instructions are mandatory when Disposition is Rework");
+     	return false
+   }
+	
+}
+
+return true
+
+
+
+
+import com.atlassian.jira.component.ComponentAccessor
+import com.opensymphony.workflow.InvalidInputException
+
+def groupManager = ComponentAccessor.getGroupManager()
+
+def assignee = issue.getAssignee()
+
+if (assignee != null && groupManager.getUsersInGroup("jira-mrb-designeng").contains(assignee)) {
+	def customFieldManager = ComponentAccessor.getCustomFieldManager();
+	def CustomFieldValue1 = issue.getCustomFieldValue(customFieldManager.getCustomFieldObjectByName("Disposition")) as String;
+	if(CustomFieldValue1 == "Use As Is") 
+	{
+		def CustomFieldValue2 = issue.getCustomFieldValue(customFieldManager.getCustomFieldObjectByName("Design Engineering Approval Comments"));
+		if(CustomFieldValue2 == null)
+		{
+			invalidInputException = new InvalidInputException("Design Engineering Approval Comments are mandatory when Disposition is Use As Is");
+			return false
+	   }
+		
+	}
+}
+return true

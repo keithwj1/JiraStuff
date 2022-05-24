@@ -1,0 +1,58 @@
+import com.atlassian.jira.component.ComponentAccessor
+
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+
+def DField = customFieldManager.getCustomFieldObject("customfield_10601")
+
+//def DField = customFieldManager.getCustomFieldObjectByName("Dispositon")
+def Mfg = customFieldManager.getCustomFieldObjectByName("Mfg Eng Approval")
+def Quality = customFieldManager.getCustomFieldObjectByName("Quality Approval")
+def Design = customFieldManager.getCustomFieldObjectByName("Design Eng Approval")
+def Ops = customFieldManager.getCustomFieldObjectByName("Ops Approval")
+def Materials = customFieldManager.getCustomFieldObjectByName("Material Approval")
+
+String dispo = issue.getCustomFieldValue(DField) as String
+//def dispo = 1
+
+String bMfg = ""
+String bQuality = ""
+String bDesign = ""
+String bOps = ""
+String bMaterials = ""
+
+if (dispo == 'Rework')
+{
+  	bMfg = "REQUIRED"
+	bQuality = "REQUIRED"
+}
+else if (dispo == "Use As Is")
+{
+    bMfg = "REQUIRED"
+	bQuality = "REQUIRED"
+	bDesign = "REQUIRED"
+	bMaterials = "REQUIRED"
+}
+else if (dispo == 'Return To Vendor')
+{
+    bQuality = "REQUIRED"
+	bMaterials = "REQUIRED"
+}
+else if (dispo == 'Scrap')
+{
+    bMfg = "REQUIRED"
+	bQuality = "REQUIRED"
+	bOps = "REQUIRED"
+	bMaterials = "REQUIRED"
+}
+else if (dispo == 'Repair')
+{
+  	bMfg = "REQUIRED"
+	bQuality = "REQUIRED"
+	bDesign = "REQUIRED"
+}
+
+issue.setCustomFieldValue(Mfg,bMfg)
+issue.setCustomFieldValue(Quality,bQuality)
+issue.setCustomFieldValue(Design,bDesign)
+issue.setCustomFieldValue(Ops,bOps)
+issue.setCustomFieldValue(Materials,bMaterials)

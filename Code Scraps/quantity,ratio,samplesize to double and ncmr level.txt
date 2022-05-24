@@ -1,0 +1,153 @@
+import org.apache.log4j.Logger
+import org.apache.log4j.Level
+  
+def log = Logger.getLogger("com.acme.CreateSubtask")
+log.setLevel(Level.DEBUG)
+
+
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.search.SearchProvider
+import com.atlassian.jira.jql.parser.JqlQueryParser
+import com.atlassian.jira.web.bean.PagerFilter
+
+
+import com.atlassian.jira.issue.MutableIssue
+import com.atlassian.jira.issue.util.DefaultIssueChangeHolder
+import com.atlassian.jira.issue.fields.CustomField
+import com.atlassian.jira.issue.fields.layout.field.FieldLayoutManager
+import com.atlassian.jira.issue.fields.layout.field.FieldLayout
+import com.atlassian.jira.issue.fields.layout.field.FieldLayoutItem
+import com.atlassian.jira.issue.ModifiedValue
+import com.atlassian.jira.issue.index.IssueIndexManager
+
+
+def jqlQueryParser = ComponentAccessor.getComponent(JqlQueryParser)
+def searchProvider = ComponentAccessor.getComponent(SearchProvider)
+
+//def issueManager = ComponentAccessor.issueManager
+def issueManager = ComponentAccessor.getIssueManager()
+def user = ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser()
+
+def projectKey = "MRB" //THE PROJECT KEY
+def queryString = "project = ${projectKey} AND issuetype = NCMR AND created >= -80w AND created <= -40w"
+
+def query = jqlQueryParser.parseQuery(queryString)
+
+def projectIssues = searchProvider.search(query, user, PagerFilter.getUnlimitedFilter()).issues.key
+
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+def fdispo = customFieldManager.getCustomFieldObject("customfield_10601");//dispo
+//def fscrap = customFieldManager.getCustomFieldObject("customfield_13217");//Scrap
+
+def fqtyrecold = customFieldManager.getCustomFieldObject("customfield_11014")//Scrap Number Field
+def fsamplesizeold = customFieldManager.getCustomFieldObject("customfield_11019")// Field
+def fqtyrejold = customFieldManager.getCustomFieldObject("customfield_11024")// Field
+def fshouldbe = customFieldManager.getCustomFieldObject("customfield_11034")// Field
+def fratio = customFieldManager.getCustomFieldObject("customfield_13218")
+def fqtyrecnew = customFieldManager.getCustomFieldObject("customfield_13219")//Scrap Number Field
+def fsamplesiznew = customFieldManager.getCustomFieldObject("customfield_13225")// Field
+def fqtyrejnew = customFieldManager.getCustomFieldObject("customfield_13220")// Field
+     
+def fieldLayoutManager = ComponentAccessor.getFieldLayoutManager();
+def issueChangeHolder = new DefaultIssueChangeHolder();
+IssueIndexManager issueIndexManager = ComponentAccessor.getIssueIndexManager();
+
+projectIssues.each{ issueKey ->
+ 	def issue = issueManager.getIssueByCurrentKey(issueKey) 
+ //YOUR CODE
+ 	def change = false
+    double trec =0.0
+    double trej = 0.0
+	if (issue.issueTypeObject.name == 'NCMR') 
+	{
+        //log.debug issueKey
+		Collection subTasks = issue.getSubTaskObjects()
+		//Check for subtasks with pending disposition
+		if (!subTasks.empty) 
+		{
+			subTasks.each 
+			{
+                def dispo = it.getCustomFieldValue(fdispo) as String
+                //log.debug dispo
+				if (dispo != null )
+                {
+                    //log.debug dispo.toString()
+                    if (dispo.toString() != "Pending" || 1==1)
+                    {
+                        
+                        def rec = it.getCustomFieldValue(fqtyrecold) as String
+                        //String insp = issue.getCustomFieldValue(fsamplesize);
+                        def rej = it.getCustomFieldValue(fqtyrejold) as String
+                        def ss = it.getCustomFieldValue(fsamplesizeold) as String
+                        //log.debug "rec = " + rec
+                        if(rec != null && rej != null)
+                        {
+                            change = true
+                            rec = rec.replaceAll("[^0-9.]", "")
+                            rej = rej.replaceAll("[^0-9.]", "")
+                            ss = ss.replaceAll("[^0-9.]", "")
+                            if (rec != "")
+                            {
+                               def nrec = rec.toDouble() 
+                               trec = trec + nrec
+                               //log.debug "rec = " + nrec
+                               fqtyrecnew.updateValue(fieldLayoutManager.getFieldLayout(it).getFieldLayoutItem(fqtyrecnew), it, new ModifiedValue(it.getCustomFieldValue(fqtyrecnew), nrec),issueChangeHolder)
+                            }
+                            if (rej != "")
+                            {
+                                def nrej = rej.toDouble()
+                                trej = trej + nrej
+                                //log.debug "rej = " + nrej
+                                fqtyrejnew.updateValue(fieldLayoutManager.getFieldLayout(it).getFieldLayoutItem(fqtyrejnew), it, new ModifiedValue(it.getCustomFieldValue(fqtyrejnew), nrej),issueChangeHolder)
+                            }
+                            if (ss != "")
+                            {
+                                def nss = ss.toDouble()
+                                //log.debug "ss = " + nss
+                                fsamplesiznew.updateValue(fieldLayoutManager.getFieldLayout(it).getFieldLayoutItem(fsamplesiznew), it, new ModifiedValue(it.getCustomFieldValue(fsamplesiznew), nss),issueChangeHolder)
+                            }
+                            if (rej != "" && rec != "")
+                            {
+                                def nrej = rej.toDouble()
+                                def nrec = rec.toDouble() 
+                                if (nrec != 0)
+                                {
+                                    double ratio = nrej/nrec 
+                                    //log.debug "ratio = " + ratio
+                                    fratio.updateValue(fieldLayoutManager.getFieldLayout(it).getFieldLayoutItem(fratio), it, new ModifiedValue(it.getCustomFieldValue(fratio), ratio),issueChangeHolder)
+                                }
+                            }
+                            
+                            //log.debug "rec = " + rec
+                            //log.debug "rej = " + rej
+                            //log.debug "ss = " + ss
+                            
+            				issueIndexManager.reIndex(it);
+                            
+                        }
+                    }
+                }
+			}
+		}
+
+
+		if (change && trec != 0.0 && trej !=0.0)
+        {
+            //Record value on issue
+			double ratio = trej/trec 
+            //log.debug "trej = " + trej.toString()
+            //log.debug "trec = " + trec.toString()
+            //log.debug "tratio = " + ratio.toString()
+            //issue.setCustomFieldValue(fqtyrejnew, trej);
+            //issue.setCustomFieldValue(fqtyrecnew, trec);
+            //issue.setCustomFieldValue(fratio, ratio);
+            
+            fqtyrejnew.updateValue(fieldLayoutManager.getFieldLayout(issue).getFieldLayoutItem(fqtyrejnew), issue, new ModifiedValue(issue.getCustomFieldValue(fqtyrejnew), trej),issueChangeHolder)
+			fqtyrecnew.updateValue(fieldLayoutManager.getFieldLayout(issue).getFieldLayoutItem(fqtyrecnew), issue, new ModifiedValue(issue.getCustomFieldValue(fqtyrecnew), trec),issueChangeHolder)
+			fratio.updateValue(fieldLayoutManager.getFieldLayout(issue).getFieldLayoutItem(fratio), issue, new ModifiedValue(issue.getCustomFieldValue(fratio), ratio),issueChangeHolder)
+            issueIndexManager.reIndex(issue);
+		}
+
+	}
+ 
+}

@@ -1,0 +1,119 @@
+import org.apache.log4j.Logger
+import org.apache.log4j.Level
+  
+def log = Logger.getLogger("com.acme.CreateSubtask")
+log.setLevel(Level.DEBUG)
+
+
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.search.SearchProvider
+import com.atlassian.jira.jql.parser.JqlQueryParser
+import com.atlassian.jira.web.bean.PagerFilter
+
+
+import com.atlassian.jira.issue.MutableIssue
+import com.atlassian.jira.issue.util.DefaultIssueChangeHolder
+import com.atlassian.jira.issue.fields.CustomField
+import com.atlassian.jira.issue.fields.layout.field.FieldLayoutManager
+import com.atlassian.jira.issue.fields.layout.field.FieldLayout
+import com.atlassian.jira.issue.fields.layout.field.FieldLayoutItem
+import com.atlassian.jira.issue.ModifiedValue
+import com.atlassian.jira.issue.index.IssueIndexManager
+
+
+def jqlQueryParser = ComponentAccessor.getComponent(JqlQueryParser)
+def searchProvider = ComponentAccessor.getComponent(SearchProvider)
+
+def issueManager = ComponentAccessor.issueManager
+
+def user = ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser()
+
+def projectKey = "MRB" //THE PROJECT KEY
+def queryString = "project = ${projectKey} AND issuetype = NCMR AND created >= -4w"
+
+def query = jqlQueryParser.parseQuery(queryString)
+
+def projectIssues = searchProvider.search(query, user, PagerFilter.getUnlimitedFilter()).issues.key
+
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+def fdispo = customFieldManager.getCustomFieldObject("customfield_10601");//dispo
+//def fscrap = customFieldManager.getCustomFieldObject("customfield_13217");//Scrap
+
+def fqtyrecieved = customFieldManager.getCustomFieldObject("customfield_11014")//Scrap Number Field
+def fsamplesize = customFieldManager.getCustomFieldObject("customfield_11019")// Field
+def fqtyrej = customFieldManager.getCustomFieldObject("customfield_11024")// Field
+def fshouldbe = customFieldManager.getCustomFieldObject("customfield_11034")// Field
+def fratio = customFieldManager.getCustomFieldObject("customfield_13218")
+     
+
+
+
+projectIssues.each{ issueKey ->
+ 	def issue = issueManager.getIssueByCurrentKey(issueKey) 
+ //YOUR CODE
+ 	def change = false
+    int trec =0
+    int trej = 0
+	if (issue.issueTypeObject.name == 'NCMR') 
+	{
+        //log.debug issueKey
+		Collection subTasks = issue.getSubTaskObjects()
+		//Check for subtasks with pending disposition
+		if (!subTasks.empty) 
+		{
+			subTasks.each 
+			{
+                def dispo = it.getCustomFieldValue(fdispo) as String
+                log.debug dispo
+				if (dispo != null )
+                {
+                    //log.debug dispo.toString()
+                    if (dispo.toString() != "Pending")
+                    {
+                        
+                        def rec = it.getCustomFieldValue(fqtyrecieved) as String
+                        //String insp = issue.getCustomFieldValue(fsamplesize);
+                        def rej = it.getCustomFieldValue(fqtyrej) as String
+                        if(rec != null && rej != null)
+                        {
+                        	trec=trec + rec.toInteger()
+                        	trej=trej + rej.toInteger()
+                            change = true
+                        }
+                    }
+                }
+			}
+		}
+
+
+		if (change && trec != 0 && trej !=0)
+        {
+            //Record value on issue
+            FieldLayoutManager fieldLayoutManager = ComponentAccessor.getFieldLayoutManager();
+            DefaultIssueChangeHolder issueChangeHolder = new DefaultIssueChangeHolder();
+			double ratio = trej/trec 
+            log.debug "trej = " + trej.toString()
+            log.debug "trec = " + trec.toString()
+            log.debug "ratio = " + ratio.toString()
+            issue.setCustomFieldValue(fqtyrej, trej);
+            issue.setCustomFieldValue(fqtyrecieved, trec);
+            issue.setCustomFieldValue(fratio, ratio);
+            FieldLayoutItem flrec = fieldLayoutManager.getFieldLayout(issue).getFieldLayoutItem(fqtyrecieved);
+            FieldLayoutItem flrej = fieldLayoutManager.getFieldLayout(issue).getFieldLayoutItem(fqtyrej);
+            FieldLayoutItem flratio = fieldLayoutManager.getFieldLayout(issue).getFieldLayoutItem(fratio);
+            
+            fqtyrej.updateValue(flrej, issue, new ModifiedValue(issue.getCustomFieldValue(fqtyrej), trej.toString()),issueChangeHolder)
+			fqtyrecieved.updateValue(flrec, issue, new ModifiedValue(issue.getCustomFieldValue(fqtyrecieved), trec.toString()),issueChangeHolder)
+			fratio.updateValue(flratio, issue, new ModifiedValue(issue.getCustomFieldValue(fratio), ratio),issueChangeHolder)
+
+            //fqtyrej.updateValue(null, issue, new ModifiedValue(issue.getCustomFieldValue(fqtyrej), trej),issueChangeHolder)
+			//fqtyrecieved.updateValue(null, issue, new ModifiedValue(issue.getCustomFieldValue(fqtyrecieved), trec),issueChangeHolder)
+			//fratio.updateValue(null, issue, new ModifiedValue(issue.getCustomFieldValue(fratio), ratio),issueChangeHolder)
+
+            IssueIndexManager issueIndexManager = ComponentAccessor.getIssueIndexManager();
+            issueIndexManager.reIndex(issue);
+		}
+
+	}
+ 
+}

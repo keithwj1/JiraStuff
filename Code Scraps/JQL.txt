@@ -1,0 +1,3 @@
+project = MRB AND issuetype = Defect AND status = Done AND ("NCMR Rework Instructions" IS EMPTY AND "Defect Rework Instructions" IS EMPTY AND "Rework Instructions" IS EMPTY) AND Disposition in (Rework)
+
+project = MRB AND issuetype = Defect AND status = Done AND ("Design Engineering Approval Comments" IS EMPTY) AND Disposition in ("Use As Is")

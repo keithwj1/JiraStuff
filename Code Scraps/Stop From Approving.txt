@@ -1,0 +1,67 @@
+import com.atlassian.jira.component.ComponentAccessor
+import com.atlassian.jira.issue.Issue;
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+def issueManager = ComponentAccessor.getIssueManager()
+def groupManager = ComponentAccessor.getGroupManager()
+
+def value = issue.getCustomFieldValue(customFieldManager.getCustomFieldObject('customfield_13016')).getValue()
+
+if (value == "Manufacturing")
+{
+    if (groupManager.isUserInGroup(currentUser?.name, 'jira-mrb-mfgeng'))
+    {
+    	return true
+    }
+    else
+	{
+    	return false
+	}
+}
+else if (value == "Quality")
+{
+    if (groupManager.isUserInGroup(currentUser?.name, 'jira-mrb-quality'))
+    {
+    	return true
+    }
+    else
+	{
+    	return false
+	}
+}
+else if (value == 'Design')
+{
+    if (groupManager.isUserInGroup(currentUser?.name, 'jira-mrb-designeng'))
+    {
+    	return true
+    }
+    else
+	{
+    	return false
+	}
+}
+else if (value == 'Operations')
+{
+    if (groupManager.isUserInGroup(currentUser?.name, 'jira-operations'))
+    {
+    	return true
+    } 
+    else
+	{
+    	return false
+	}
+}
+else if (value == 'Materials')
+{
+    if (groupManager.isUserInGroup(currentUser?.name, 'jira-mrb-materials'))
+    {
+    	return true
+    } 
+    else
+	{
+    	return false
+	}
+}
+else
+{
+    return false
+}

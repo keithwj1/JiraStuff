@@ -1,0 +1,47 @@
+import com.atlassian.jira.component.ComponentAccessor
+import com.opensymphony.workflow.InvalidInputException
+
+//optimization, check for dispo before searching group
+def customFieldManager = ComponentAccessor.getCustomFieldManager();
+def CustomFieldValue1 = issue.getCustomFieldValue(customFieldManager.getCustomFieldObjectByName("Disposition")) as String;
+if(CustomFieldValue1 == "Rework") 
+{
+	def CustomFieldValueDefect = issue.getCustomFieldValue(customFieldManager.getCustomFieldObjectByName("Defect Rework Instructions"));
+  	def CustomFieldValueRework = issue.getCustomFieldValue(customFieldManager.getCustomFieldObjectByName("NCMR Rework Instructions"));
+  	if(CustomFieldValueDefect == null && CustomFieldValueRework == null)
+  	{
+        def groupManager = ComponentAccessor.getGroupManager()
+        def assignee = ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser()
+        if (assignee != null && groupManager.getUsersInGroup("jira-mrb-mfgeng").contains(assignee)) 
+        {
+              invalidInputException = new InvalidInputException("Rework Instructions are mandatory when Disposition is Rework, Use the Edit Button top left");
+              return false
+        }
+        
+    }
+}
+return true
+
+
+import com.atlassian.jira.component.ComponentAccessor
+import com.opensymphony.workflow.InvalidInputException
+
+//optimization, check for dispo before searching group
+def customFieldManager = ComponentAccessor.getCustomFieldManager();
+def CustomFieldValue1 = issue.getCustomFieldValue(customFieldManager.getCustomFieldObjectByName("Disposition")) as String;
+if(CustomFieldValue1 == "Use As Is") 
+{
+	def CustomFieldValue2 = issue.getCustomFieldValue(customFieldManager.getCustomFieldObjectByName("Design Engineering Approval Comments"));
+  	if(CustomFieldValue2 == null)
+  	{
+        def groupManager = ComponentAccessor.getGroupManager()
+        def assignee = ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser()
+        if (assignee != null && groupManager.getUsersInGroup("jira-mrb-designeng").contains(assignee)) 
+        {
+              invalidInputException = new InvalidInputException("Design Engineering Approval Comments are mandatory when Disposition is Use As Is, Use the Edit Button top left");
+              return false
+        }
+        
+    }
+}
+return true

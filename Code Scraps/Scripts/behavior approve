@@ -1,0 +1,25 @@
+import com.atlassian.jira.component.ComponentAccessor
+import custom.proj.SchApproval
+import java.sql.Timestamp
+
+def selectlist = getFieldById("customfield_13016")
+
+def currentUser = ComponentAccessor.getJiraAuthenticationContext().getLoggedInUser()
+def groupManager = ComponentAccessor.getGroupManager()
+def optionsManager = ComponentAccessor.getOptionsManager()
+def customFieldManager = ComponentAccessor.getCustomFieldManager()
+def customField = customFieldManager.getCustomFieldObject("customfield_13016")
+def config = customField.getRelevantConfig(getIssueContext())
+def options = optionsManager.getOptions(config)
+def action = getActionName();
+
+def Approval = new SchApproval();
+List myopt = Approval.GetApprovalOptions(underlyingIssue,currentUser)
+
+selectlist.setFieldOptions(options.findAll {it.value in myopt})
+def oval = selectlist.getFormValue();
+
+if (oval == '-1' || oval == null){
+    def defaultoption = options.find {it.value == myopt[0]}
+    selectlist.setFormValue(defaultoption.optionId);
+}
